@@ -1,0 +1,807 @@
+---
+title: "Metagenome and metabolome study on inhaled corticosteroids in asthma patients with side effects."
+subtitle: "Supplementary document"
+author: "Anatoly Sorokin, Meder Seitov, Berik Emilov, Muskarbek Iskakov, Batyr Osmonov and Igor Goryanin"
+date: '`r format(Sys.time(), "%d.%m.%Y")`'
+output:
+  pdf_document:
+    keep_tex: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    extra_dependencies: ["flafter"]
+  html_document: default
+params:
+  format: !r if(opts_knit$get("rmarkdown.pandoc.to") == 'html') c('screen', 'print')
+    else 'print'
+header-includes:
+- \usepackage[utf8]{inputenc}
+- \usepackage[english]{babel}
+- \usepackage{grffile}
+- \usepackage{rotating}
+- \usepackage{caption}
+- \usepackage{longtable}
+- \usepackage{lscape}
+- \DeclareCaptionLabelFormat{addS}{#1 S#2}
+- \captionsetup[table]{name=Supplementary Table}
+- \renewcommand{\thetable}{S\arabic{table}}
+- \captionsetup[figure]{name=Supplementary Figure}
+- \renewcommand{\thefigure}{S\arabic{figure}}
+---
+```{r loadPackages, include=FALSE, cache=FALSE}
+## load additional packages in this chunk
+library(pander)
+library(knitr)
+library(data.table)
+library(ggplot2)
+library(xtable)
+library(tidyr)
+library(dplyr)
+library(DESeq2)
+library(apeglm)
+library(MOFA2)
+library(lubridate)
+library(EnhancedVolcano)
+
+options(lubridate.week.start=1)
+
+```
+
+```{r setup, include=FALSE, cache=FALSE}
+## This chunk should contain global configuration commands.
+## Use this to set knitr options and related things. Everything
+## in this chunk will be included in an appendix to document the
+## configuration used.
+#output <- opts_knit$get("rmarkdown.pandoc.to")
+knitr::opts_knit$set(stop_on_error = 2L)
+
+## By default R code is only included in HTML versions of the report
+## (where it can be collapsed). You can generate a PDF version
+## using rmarkdown::pdf_document to get a copy for print. Extensive
+## chunks of R code may or may not be desired in /hat setting. If you
+## want them simply change the following arguments to `echo = TRUE`.
+## In either case the default can be overwritten for individual chunks.
+#opts_chunk$set(echo = output=="html")
+#opts_chunk$set(warning = output=="html")
+#opts_chunk$set(message = output=="html")
+
+## Cache options
+knitr::opts_chunk$set(cache=TRUE,warning=FALSE, echo = TRUE,message=FALSE)
+
+## Figure options
+## Set default figure format
+#options(reportmd.figure.format=params$format)
+
+## Set 'hide.fig.code' to FALSE to include code chunks that
+## produce Figures in the output. Note that this affects all chunks
+## that provide a figure caption.
+knitr::opts_chunk$set(hold=TRUE, hide.fig.code=FALSE)
+
+## Set up default plotting options for different formats.
+## These can be overwritten for individual chunks
+#interactiveFig()
+#screenFig()
+#printFig()
+
+## Pander options
+pander::panderOptions("digits", 3)
+pander::panderOptions("table.split.table", 160)
+#panderOptions("table.style", "grid")
+
+## Configure Figure and Table lables
+#options(figcap.prefix = "Figure", figcap.sep = ":", figcap.prefix.highlight = "**")
+#options(tabcap.prefix = "Table", tabcap.sep = ":", tabcap.prefix.highlight = "**")
+
+## Install required knitr hooks
+#installHooks()
+```
+
+```{r functions, include=FALSE}
+## Custom functions used in the analysis should go into this chunk.
+## They will be listed in their own section of the appendix.
+
+##==================== Functions ====================##
+printTable <-
+  function(mat,main,landscape = TRUE,digits = 0,sig = 0.01,align= 'lllrr',
+           label=paste0('tab:',substr(sub(' ','_',main),0,10)),
+           include.rownames=FALSE) {
+    addtorow          <- list()
+    addtorow$pos      <- list()
+    addtorow$pos[[1]] <- c(0)
+    addtorow$command  <- c(
+      paste(
+        "\\hline \n",
+        "\\endhead \n",
+        "\\hline \n",
+        "\\multicolumn{3}{l}{\\footnotesize Continued on next page} \n",
+        "\\endfoot \n",
+        "\\endlastfoot \n",sep = ""
+      )
+    )
+    if (landscape) {
+      cat(
+        sprintf(
+          "\\newpage\n  \\begin{landscape} \n\\begin{center}\n\\captionof{table}{%s (%d)}\n\\scriptsize",
+          main,dim(mat)[1]
+        )
+      )
+    }else{
+      cat(
+        sprintf(
+          "\\begin{center}\n\\captionof{table}{%s (%d)}\n\\scriptsize",
+          main,dim(mat)[1]
+        )
+      )
+    }
+    #cat(dim(mat),names(mat),'\n')
+    matU<-mat
+    # matU$name<-sanitizestr(mat$name)
+    # matU$description<-sanitizestr(mat$description)
+    # cat(dim(matU),names(matU),'\n')
+    print(
+      xtable(
+        matU,
+        align = align,#paste(align,collapse = ''),
+        digits = digits,auto = TRUE)#,label = label)
+      ,size = "small",include.colnames = TRUE,
+      tabular.environment = "longtable", sanitize.text.function=NULL,
+      floating = FALSE,include.rownames = include.rownames,
+      add.to.row = addtorow,hline.after = c(-1)
+    )
+    cat("\\addtocounter{table}{-1}\n")
+    cat(sprintf("\\label{%s}",label),'\n')
+    if (landscape) {
+      cat("\\end{center}\n \\end{landscape}")
+    }else{
+      cat("\\end{center}\n ")
+    }
+  }
+##==================== Layouts ====================##
+alDeseqF<-paste0('|l',#'|p{0.01\\textwidth}',#ID
+           '|p{0.35\\textwidth}',#name
+           '|p{0.15\\textwidth}',#taxonomy_id
+           '|r',                #baseMean
+           '|r',                #log2FoldChange
+           '|r',                #lfcSE
+           '|r',                #stat
+           '|r',                #pvalue
+           '|r|'                 #,padj
+)
+```
+
+# Read data
+```{r read.metadata}
+cmdt<-fread('patients_metadata.csv')
+cmdt$Arm<-factor(cmdt$Arm,levels = c('healthy','asthma'))
+```
+
+```{r load.data}
+brakenDt<-read.delim('bracken_braken300_combined_reports.txt')
+```
+
+```{r prepare.deseq2.data}
+cts<-as.matrix(brakenDt[,grep('^KS.*_num',names(brakenDt))])
+rownames(cts)<-brakenDt$taxonomy_id
+smplid<-sub('^(KS[^_]+)_.+','\\1',colnames(cts))
+idx<-match(cmdt$ID.participant,smplid)
+rownames(cmdt)<-colnames(cts)[idx]
+cts <- cts[, rownames(cmdt)]
+```
+
+# DESeq2 analysis of Arm
+```{r run.deseq2.arm}
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = cmdt[,c('Arm','Gender',
+                                               'TREATMENT.LONGEST','Ic6')],
+                              design = ~ Arm)
+mcols(dds)<-DataFrame(mcols(dds),brakenDt[,1:3])
+dds <- DESeq(dds)
+res <- results(dds)
+summary(res)
+```
+
+```{r shrinkage.arm, fig.width=8,fig.height=8,fig.cap="\\label{fig:shrinkage.arm} MA-plot for Asthma vs healthy model."}
+resLFC <- lfcShrink(dds, coef="Arm_asthma_vs_healthy", type="apeglm")
+plotMA(resLFC, xlim=c(100,1e7), ylim=c(-2,2))
+```
+
+```{r volcano.arm, fig.width= 12, fig.height=12,fig.cap="\\label{fig:volcano.arm} Volcano plot for Asthma vs healthy model."}
+EnhancedVolcano(resLFC,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+```{r res.df.arm}
+resSigArm <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigArm),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigArm))
+rownames(res.df)<-NULL
+```
+
+## Overabundant species
+```{r print.over.arm,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in Asthma' )
+printTable(res.over,
+           'Significantly overrepresented species in Asthma',digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmOver')
+```
+
+## Underabundant species
+```{r print.under.arm,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in Asthma')
+printTable(res.under, 'Significantly underrepresented species in Asthma',
+           digits = 3,landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmUnder')
+```
+
+# DESeq2 analysis of Gender
+```{r run.deseq2.Gender}
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = cmdt[,c('Arm','Gender',
+                                               'TREATMENT.LONGEST','Ic6')],
+                              design = ~ Gender)
+mcols(dds)<-DataFrame(mcols(dds),brakenDt[,1:3])
+dds <- DESeq(dds)
+res <- results(dds)
+summary(res)
+```
+
+```{r shrinkage.Gender, fig.width=8,fig.height=8,fig.cap="\\label{fig:shrinkage.Gender} MA-plot for male vs female model."}
+resLFC <- lfcShrink(dds, coef="Gender_male_vs_female", type="apeglm")
+plotMA(resLFC, xlim=c(100,1e7), ylim=c(-2,2))
+```
+
+```{r volcano.Gender, fig.width= 12, fig.height=12,fig.cap="\\label{fig:volcano.Gender} Volcano plot for male vs female model."}
+EnhancedVolcano(resLFC,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+
+```{r res.df.Gender}
+resSigGender <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigGender),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigGender))
+rownames(res.df)<-NULL
+```
+
+## Overabundant species
+```{r print.over.Gender,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in male' )
+printTable(res.over,
+           'Significantly overrepresented species in male',digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:GenderOver')
+```
+
+
+## Underabundant species
+```{r print.under.Gender,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in male')
+printTable(res.under, 'Significantly underrepresented species in male',
+           digits = 3,landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:GenderUnder')
+```
+
+
+# DESeq2 analysis of Ic6
+```{r run.deseq2.Ic6}
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = cmdt[,c('Arm','Gender',
+                                               'TREATMENT.LONGEST','Ic6')],
+                              design = ~ Ic6)
+mcols(dds)<-DataFrame(mcols(dds),brakenDt[,1:3])
+dds <- DESeq(dds)
+res <- results(dds)
+summary(res)
+```
+
+```{r shrinkage.Ic6, fig.width=8,fig.height=8,fig.cap="\\label{fig:shrinkage.Ic6} MA-plot for side-effect vs no side-effect model."}
+resLFC <- lfcShrink(dds, coef="Ic6_YES_vs_NO", type="apeglm")
+plotMA(resLFC, xlim=c(100,1e7), ylim=c(-2,2))
+summary(resLFC)
+```
+
+```{r volcano.Ic6, fig.width= 12, fig.height=12, fig.cap="\\label{fig:volcano.Ic6} Volcano plot for side-effect vs no side-effect model."}
+EnhancedVolcano(res, 
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+
+```{r res.df.Ic6}
+resSigIc6 <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigIc6),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigIc6))
+rownames(res.df)<-NULL
+```
+
+## Overabundant species
+```{r print.over.Ic6,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption=paste('Significantly overrepresented species',
+#                              'in persons with side effects' ))
+printTable(res.over, paste('Significantly overrepresented species',
+                              'in persons with side effects' ),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:Ic6Over')
+```
+
+
+## Underabundant species
+```{r print.under.Ic6,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption=paste('Significantly underrepresented species',
+#                              'in persons with side effects' ))
+printTable(res.under, paste('Significantly underrepresented species',
+                              'in persons with side effects' ),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:Ic6Under')
+```
+
+
+# DESeq2 analysis of ArmGender
+
+Let's test which species respond to Asthma differently in male and female:
+```{r run.deseq2.ArmGender}
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = cmdt[,c('Arm','Gender',
+                                               'TREATMENT.LONGEST','Ic6')],
+                              design = ~ Arm + Gender + Arm:Gender)
+mcols(dds)<-DataFrame(mcols(dds),brakenDt[,1:3])
+dds$group<-factor(paste0(dds$Arm,'.',dds$Gender))
+design(dds) <- ~ group
+dds <- DESeq(dds)
+```
+```{r deseq2.model.matrix.ArmGender}
+mod_mat <- model.matrix(design(dds), colData(dds))
+asthma_male <- colMeans(mod_mat[dds$Arm == "asthma" & dds$Gender == "male", ])
+asthma_female <- colMeans(mod_mat[dds$Arm == "asthma" & dds$Gender == "female", ])
+healthy_male <- colMeans(mod_mat[dds$Arm == "healthy" & dds$Gender == "male", ])
+healthy_female <- colMeans(mod_mat[dds$Arm == "healthy" & dds$Gender == "female", ])
+res<-results(dds,contrast = (asthma_male-healthy_male)-(asthma_female-healthy_female))
+summary(res)
+```
+
+
+```{r volcano.ArmGender, fig.width= 12, fig.height=12,fig.cap="\\label{fig:volcano.ArmGender} Volcano plot for differential analysis of species in male vs female in Asthma samples."}
+EnhancedVolcano(res,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+```{r res.df.ArmGender}
+resSigArmGender <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigArmGender),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigArmGender))
+rownames(res.df)<-NULL
+```
+
+## Overabundant species
+```{r print.over.ArmGender,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in male vs female in Asthma samples' )
+printTable(res.over, paste('Significantly overrepresented species in male ',
+                           'vs female in Asthma samples'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmGenderOver')
+```
+
+## Underabundant species
+```{r print.under.ArmGender,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in male vs female in Asthma samples')
+printTable(res.under, paste('Significantly underrepresented species in male ',
+                            'vs female in Asthma samples'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmIGenderUnder')
+```
+
+
+# DESeq2 analysis of ArmIc6
+
+Let's test which species respond to Asthma differently in male and female:
+```{r run.deseq2.ArmIc6}
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = cmdt[,c('Arm','Gender',
+                                               'TREATMENT.LONGEST','Ic6')],
+                              design = ~ Arm + Ic6)
+mcols(dds)<-DataFrame(mcols(dds),brakenDt[,1:3])
+dds$group<-factor(paste0(dds$Arm,'.',dds$Ic6))
+design(dds) <- ~ group
+dds <- DESeq(dds)
+```
+
+## Healthy vs Asthma with no side effects
+
+```{r deseq2.model.matrix.ArmIc61}
+mod_mat <- model.matrix(design(dds), colData(dds))
+asthma_yes <- colMeans(mod_mat[dds$Arm == "asthma" & dds$Ic6 == "YES", ])
+asthma_no <- colMeans(mod_mat[dds$Arm == "asthma" & dds$Ic6 == "NO", ])
+healthy_yes <- colMeans(mod_mat[dds$Arm == "healthy" & dds$Ic6 == "YES", ])
+healthy_no <- colMeans(mod_mat[dds$Arm == "healthy" & dds$Ic6 == "NO", ])
+res<-results(dds,contrast = (healthy_no-asthma_no))
+summary(res)
+```
+
+```{r volcano.ArmIc61, fig.width= 12, fig.height=12, fig.cap="\\label{fig:volcano.ArmIc61} Volcano plot for differential analysis of species in Healthy vs Asthma with no side effects samples."}
+EnhancedVolcano(res,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+
+
+```{r res.df.ArmIc61}
+resSigArmIc61 <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigArmIc61),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigArmIc61))
+rownames(res.df)<-NULL
+```
+
+### Overabundant species
+```{r print.over.ArmIc61,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in Healthy vs Asthma with no side effects' )
+printTable(res.over, paste('Significantly overrepresented species in Healthy vs',
+                           ' Asthma with no side effects'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmIc61Over')
+```
+
+
+### Underabundant species
+```{r print.under.ArmIc61,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in Healthy vs Asthma with no side effects')
+printTable(res.under, paste('Significantly underrepresented species in Healthy',
+                            ' vs Asthma with no side effects'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmIc61Under')
+```
+
+
+## Healthy vs Asthma with side effects
+
+```{r deseq2.model.matrix.ArmIc62}
+res<-results(dds,contrast = (healthy_no-asthma_yes))
+summary(res)
+```
+
+```{r volcano.ArmIc62, fig.width= 12, fig.height=12,fig.cap="\\label{fig:volcano.ArmIc62} Volcano plot for differential analysis of species in Healthy vs Asthma with side effects samples."}
+EnhancedVolcano(res,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+
+
+```{r res.df.ArmIc62}
+resSigArmIc62 <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigArmIc62),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigArmIc62))
+rownames(res.df)<-NULL
+```
+
+### Overabundant species
+```{r print.over.ArmIc62,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in Healthy vs Asthma with side effects' )
+printTable(res.over, paste('Significantly overrepresented species in Healthy ',
+           'vs Asthma with side effects'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmIc62Over')
+```
+
+
+### Underabundant species
+```{r print.under.ArmIc62,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in Healthy vs Asthma with side effects')
+printTable(res.under, paste('Significantly underrepresented species in Healthy ',
+                            'vs Asthma with side effects'),digits = 3,
+           landscape = TRUE,align = alDeseqF,include.rownames = TRUE,
+           label = 'tab:ArmIc62Under')
+```
+
+
+## Asthma with no side effects vs Asthma with side effects
+
+```{r deseq2.model.matrix.ArmIc63}
+res<-results(dds,contrast = (asthma_no-asthma_yes))
+summary(res)
+```
+
+
+```{r volcano.ArmIc63, fig.width= 12, fig.height=12, fig.cap="\\label{fig:volcano.ArmIc63} Volcano plot for differential analysis of species in Asthma with no side effects vs Asthma with side effects."}
+EnhancedVolcano(res,
+lab = brakenDt$name, 
+x = 'log2FoldChange',
+y = 'padj',drawConnectors = TRUE)
+```
+
+
+```{r res.df.ArmIc63}
+resSigArmIc63 <- subset(res[order(res$padj),], padj < 0.1)
+idx<-match(rownames(resSigArmIc63),as.character(brakenDt$taxonomy_id))
+res.df<-cbind(brakenDt[idx,1:2],as.data.frame(resSigArmIc63))
+rownames(res.df)<-NULL
+```
+
+### Overabundant species
+```{r print.over.ArmIc63,results='asis'}
+res.over<-res.df[res.df$log2FoldChange>0,]
+#pander(res.over,caption='Significantly overrepresented species in Asthma with no side effects vs Asthma with side effects' )
+printTable(res.over, paste('Significantly overrepresented species in Asthma ',
+                           'with no side effects vs Asthma with side effects'),
+                           digits = 3,landscape = TRUE,align = alDeseqF,
+                           include.rownames = TRUE,label = 'tab:ArmIc63Over')
+```
+
+
+### Underabundant species
+```{r print.under.ArmIc63,results='asis'}
+res.under<-res.df[res.df$log2FoldChange<0,]
+#pander(res.under,caption='Significantly underrepresented species in Asthmawith no side effects vs Asthma with side effects')
+printTable(res.under, paste('Significantly underrepresented species in ',
+                            'Asthma with no side effects vs Asthma with ',
+                            'side effects'),digits = 3,landscape = TRUE,
+           align = alDeseqF,include.rownames = TRUE,label = 'tab:ArmIc63Under')
+```
+
+# MOFA analysis
+## Read model
+```{r read.model}
+model<-readRDS('mofa2_model.rds')
+idx<-match(samples_names(model)[[1]],cmdt$ID.participant)
+sample_metadata <- data.frame(sample = samples_names(model)[[1]],
+Arm = cmdt$Arm[idx], 
+Ic6=cmdt$Ic6[idx],
+Gender=cmdt$Gender[idx],
+ArmG= paste(cmdt$Arm[idx],cmdt$Gender[idx],sep='.'),
+ArmX=paste(cmdt$Arm[idx],cmdt$Ic6[idx],sep='.'))
+
+samples_metadata(model) <- sample_metadata
+
+```
+
+## Variance explained
+```{r variance.per.view,results='asis'}
+pander(model@cache$variance_explained$r2_total[[1]],
+       caption='\\label{tab:VarOmics} Variance explained by the omics.')
+```
+
+```{r variance.per.factor,results='asis'}
+pander(model@cache$variance_explained$r2_per_factor[[1]],
+       "Variance explained by factors",digits = 3,landscape = FALSE,
+           align = 'lrr',include.rownames = TRUE,label = 'tab:VarFactor')
+```
+
+
+## Factor Plots
+```{r plot.by.Arm, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.by.Arm} Beeswarm plot of the latent factor values for the Asthma vs Healthy groupping."}
+p <- plot_factor(model, 
+  factors = c(1,2,3,4),
+  color_by = "Arm",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = T,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("asthma"="black", "healthy"="red")) +
+  scale_fill_manual(values=c("asthma"="black", "healthy"="red"))
+
+print(p)
+
+```
+
+```{r plot.by.ArmG, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.by.ArmG} Beeswarm plot of the latent factor values for the Diagnosis and Gender groupping."}
+p <- plot_factor(model, 
+  factors = c(1,2,3,4),
+  color_by = "ArmG",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = T,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("asthma.female"="black", "asthma.male"='red',"healthy.female"="blue","healthy.male"="green")) +
+  scale_fill_manual(values=c("asthma.female"="black", "asthma.male"='red',"healthy.female"="blue","healthy.male"="green"))
+
+print(p)
+
+```
+
+```{r plot.by.ArmX, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.by.ArmX} Beeswarm plot of the latent factor values for the Diagnosis and side-effect grouping."}
+p <- plot_factor(model, 
+  factors = c(1,2,3,4),
+  color_by = "ArmX",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = T,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("asthma.YES"="red", "asthma.NO"='black',"healthy.NO"="green")) +
+  scale_fill_manual(values=c("asthma.YES"="red", "asthma.NO"='black',"healthy.NO"="green"))
+
+print(p)
+
+```
+
+```{r plot.by.gender, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.by.gender} Beeswarm plot of the latent factor values for the groupping by Gender."}
+p <- plot_factor(model, 
+  factors = c(1,2,3,4),
+  color_by = "Gender",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = T,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("male"="black", "female"="red")) +
+  scale_fill_manual(values=c("male"="black", "female"="red"))
+
+print(p)
+
+```
+
+```{r plot.by.side, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.by.side} Beeswarm plot of the latent factor values for the groupping by side-effect."}
+p <- plot_factor(model, 
+  factors = c(1,2,3,4),
+  color_by = "Ic6",
+  dot_size = 3,        # change dot size
+  dodge = T,           # dodge points with different colors
+  legend = T,          # remove legend
+  add_violin = T,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+
+# The output of plot_factor is a ggplot2 object that we can edit
+p <- p + 
+  scale_color_manual(values=c("YES"="black", "NO"="red")) +
+  scale_fill_manual(values=c("YES"="black", "NO"="red"))
+
+print(p)
+
+```
+
+# Factor matrix plot
+```{r matrix.plot.by.Arm, fig.width= 12, fig.height=12, fig.cap="\\label{fig:matrix.plot.by.Arm} Matrix of scatterplots of each pair of latent factors groupped by Diagnosis."}
+plot_factors(model, 
+  factors = 1:6,
+  color_by = "Arm"
+)
+```
+
+```{r matrix.plot.by.ArmX, fig.width= 12, fig.height=12, fig.cap="\\label{fig:matrix.plot.by.ArmX} Matrix of scatterplots of each pair of latent factors groupped by Diagnosis and side-effects."}
+plot_factors(model, 
+  factors = 1:6,
+  color_by = "ArmX"
+)
+```
+
+```{r matrix.plot.by.ArmG, fig.width= 12, fig.height=12, fig.cap="\\label{fig:matrix.plot.by.ArmG} Matrix of scatterplots of each pair of latent factors groupped by Diagnosis and Gender."}
+plot_factors(model, 
+  factors = 1:6,
+  color_by = "ArmG"
+)
+```
+
+# Plot weights
+```{r weigths.metab.1, fig.width= 12, fig.height=12, fig.cap="\\label{fig:weigths.metab.1} Metabolomics feature weights distribution plot for the first factor."}
+plot_weights(model,
+  view = "metabolomics",
+  factor = 1,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) + ggtitle('Metabolomics Factor 1')
+
+```
+
+```{r weigths.metab.2, fig.width= 12, fig.height=12, fig.cap="\\label{fig:weigths.metab.2} Metabolomics feature weights distribution plot for the second factor."}
+plot_weights(model,
+  view = "metabolomics",
+  factor = 2,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) + ggtitle('Metabolomics Factor 2')
+
+```
+
+```{r weigths.metab.3, fig.width= 12, fig.height=12, fig.cap="\\label{fig:weigths.metab.3} Metabolomics feature weights distribution plot for the third factor."}
+plot_weights(model,
+  view = "metabolomics",
+  factor = 3,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) + ggtitle('Metabolomics Factor 3')
+
+```
+
+```{r weigths.metab.4, fig.width= 12, fig.height=12, fig.cap="\\label{fig:weigths.metab.4} Metabolomics feature weights distribution plot for the fourth factor."}
+plot_weights(model,
+  view = "metabolomics",
+  factor = 4,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) + ggtitle('Metabolomics Factor 4')
+
+```
+
+
+```{r weigths.metag.2, fig.width= 12, fig.height=12, fig.cap="\\label{fig:weigths.metag.2} Metagenomics feature weights distribution plot for the second factor."}
+plot_weights(model,
+  view = "metagenomics",
+  factor = 2,
+  nfeatures = 10,     # Number of features to highlight
+  scale = T,          # Scale weights from -1 to 1
+  abs = F             # Take the absolute value?
+) + ggtitle('Metagenomics Factor 2')
+
+```
+
+# UMAP projection
+
+```{r plot.umap, fig.width= 12, fig.height=12, fig.cap="\\label{fig:plot.umap} UMAP projection of the MOFA model."}
+modeltsne <- run_umap(model,n_neighbors = 15)
+plot_dimred(modeltsne,
+  method = "UMAP",  # method can be either "TSNE" or "UMAP"
+  color_by = "ArmX",
+  shape_by = 'Arm'
+)
+```
+
+
+# Appendix {.tabset}
+## Functions
+```{r functions, eval=FALSE, include=TRUE}
+```
+
+## Setup R
+```{r setup, eval=FALSE}
+```
+
+## Versions
+### Document version
+```{r docVersion, echo=FALSE, results='asis', cache=FALSE}
+cat(params$version)
+```
+
+### Session Info
+```{r sessionInfo, echo=FALSE, results='asis', class='text', warning=FALSE}
+si<-devtools::session_info()
+cat('Platform\n\n')
+pander::pander(si$platform)
+cat('Packages\n\n')
+knitr::kable(as.data.frame(si$packages)[,c('ondiskversion','loadedversion','date','source')],align = c('l','l'))
+```
+

@@ -1,0 +1,27 @@
+ID participant,BGI ID,Date of sampling,Ethnicity,Gender,Year of Birth,Arm,BMI,height,weight,BP,HR,TREATMENT LONGEST,SpO2,CRP international units per ml,"Alanine aminotransferase (ALT) 
+units per liter","Aspartate aminotransferase (AST)
+units per liter","Gamma-glutamyl transpeptidase (gamma-GT) 
+units per liter",Sample ID,Sample Name,Group,Order,Batch,Sample ID (right),Sample Name (right),Group (right),Sample number,Sample name,Biological group
+KS0001,1M,2022/08/04,Kyrgyz,female,1983,asthma,28.65013774,1.65,78,120/80,90,ICS,96,10.03,11,21,20.61,23P05530001,asthma.YES.7,asthma-YES,6,1,23P05530001,asthma-YES-7,asthma-YES,23P05530001,1M,asthma_YES
+KS0002,3M,2022/08/04,Kyrgyz,female,1973,asthma,24.24391847,1.56,59,130/70,78,ICS,95,7,21,18,26,23P05530002,healthy.8,healthy,20,1,23P05530002,healthy-8,healthy,23P05530002,3M,healthy
+KS0003,5M,2022/09/29,Kyrgyz,female,1979,asthma,21.22788762,1.55,51,120/70,85,ICS,94,3.96,20,17,12.22,23P05530003,asthma.YES.6,asthma-YES,25,1,23P05530003,asthma-YES-6,asthma-YES,23P05530003,5M,asthma_YES
+KS0004,7M,2022/10/31,Kyrgyz,female,1966,asthma,29.74419988,1.64,80,150/90,80,ICS,93,4.11,13,19,15.04,23P05530004,asthma.YES.5,asthma-YES,15,1,23P05530004,asthma-YES-5,asthma-YES,23P05530004,7M,asthma_YES
+KS0005,9M,2022/11/01,Kyrgyz,female,1983,asthma,29.666548,1.59,75,120/80,95,ICS,96,20,52,37,60.17,23P05530005,healthy.7,healthy,29,1,23P05530005,healthy-7,healthy,23P05530005,9M,healthy
+KS0006,11M,2022/11/02,Kyrgyz,female,1976,asthma,33.32756233,1.52,77,150/90,83,ICS,95,6,22,27,34,23P05530006,asthma.NO.8,asthma-NO,11,1,23P05530006,asthma-NO-8,asthma-NO,23P05530006,11M,asthma_NO
+KS0007,13M,2022/12/10,Kyrgyz,male,1994,healthy,23.38868656,1.73,70,110/60,77,absent,97,6,22,27,34,23P05530007,asthma.NO.7,asthma-NO,7,1,23P05530007,asthma-NO-7,asthma-NO,23P05530007,13M,asthma_NO
+KS0008,15M,2022/12/10,Kyrgyz,male,1995,healthy,26.25072495,1.81,86,120/80,70,absent,98,6,22,27,34,23P05530008,healthy.6,healthy,21,1,23P05530008,healthy-6,healthy,23P05530008,15M,healthy
+KS0010,19M,2023/01/16,Kyrgyz,male,1990,asthma,29.06592681,1.74,88,120/70,87,ICS,95,4.36,24,20,49.7,23P05530010,asthma.NO.6,asthma-NO,17,1,23P05530010,asthma-NO-6,asthma-NO,23P05530010,19M,asthma_NO
+KS0011,21M,2023/01/17,Kyrgyz,male,1990,healthy,24.03170937,1.79,77,110/70,75,absent,96,4.38,18,20,15.43,23P05530011,asthma.NO.5,asthma-NO,12,1,23P05530011,asthma-NO-5,asthma-NO,23P05530011,21M,asthma_NO
+KS0012,23M,2023/01/17,Kyrgyz,male,1993,healthy,24.44180209,1.74,74,110/60,80,absent,97,4.85,16,12,22.67,23P05530012,healthy.5,healthy,30,1,23P05530012,healthy-5,healthy,23P05530012,23M,healthy
+KS0013,25M,2023/01/18,Kyrgyz,female,1996,healthy,25.71166208,1.65,70,110/70,79,absent,98,4.18,18,27,10.91,23P05530013,healthy.4,healthy,8,1,23P05530013,healthy-4,healthy,23P05530013,25M,healthy
+KS0014,27M,2023/01/21,Kyrgyz,female,1967,asthma,26.44628099,1.65,72,130/90,69,ICS,96,4.12,50,24,49.79,23P05530014,healthy.3,healthy,18,1,23P05530014,healthy-3,healthy,23P05530014,27M,healthy
+KS0015,29M,2023/01/21,Kyrgyz,male,1980,asthma,29.3877551,1.75,90,120/70,75,ICS,95,4.55,28,15,41.92,23P05530015,asthma.NO.4,asthma-NO,27,1,23P05530015,asthma-NO-4,asthma-NO,23P05530015,29M,asthma_NO
+KS0016,31M,2023/02/04,Kyrgyz,female,1990,Asthma,22.95908766,1.63,61,110/70,88,ICS,96,0,,,,23P05530016,asthma.YES.4,asthma-YES,22,1,23P05530016,asthma-YES-4,asthma-YES,23P05530016,31M,asthma_YES
+KS0017,33M,2023/02/03,Kyrgyz,female,1998,healthy,22.65625,1.6,58,120/80,100,absent,97,,,,,23P05530017,healthy.2,healthy,9,1,23P05530017,healthy-2,healthy,23P05530017,33M,healthy
+KS0018,35M,2023/02/04,Kyrgyz,male,1978,asthma,29.98358793,1.78,95,130/80,62,ICS,96,4.51,42,30,32.57,23P05530018,healthy.1,healthy,13,1,23P05530018,healthy-1,healthy,23P05530018,35M,healthy
+KS0019,37M,2023/02/08,Kyrgyz,male,1967,asthma,27.71768524,1.72,82,140/80,87,ICS,95,4.7,15,22,26.38,23P05530019,asthma.YES.3,asthma-YES,28,1,23P05530019,asthma-YES-3,asthma-YES,23P05530019,37M,asthma_YES
+KS0020,39M,2023/02/11,Kyrgyz,female,1992,healthy,25.29937595,1.54,60,100/60,75,absent,98,4.64,32,23,34.44,23P05530020,asthma.NO.3,asthma-NO,23,1,23P05530020,asthma-NO-3,asthma-NO,23P05530020,39M,asthma_NO
+KS0021,41M,2023/02/14,Kyrgyz,male,1975,asthma,29.41176471,1.7,85,110/80,74,ICS,93,,,,,23P05530021,asthma.YES.2,asthma-YES,10,1,23P05530021,asthma-YES-2,asthma-YES,23P05530021,41M,asthma_YES
+KS0022,43M,2023/02/16,Kyrgyz,male,1988,asthma,19.59183673,1.75,60,100/60,81,ICS,95,,,,,23P05530022,asthma.YES.1,asthma-YES,19,1,23P05530022,asthma-YES-1,asthma-YES,23P05530022,43M,asthma_YES
+KS0023,45M,2023/02/04,Kyrgyz,female,1971,healthy,27.54820937,1.65,75,140/90,78,absent,95,8,18,19,38,23P05530023,asthma.NO.2,asthma-NO,24,1,23P05530023,asthma-NO-2,asthma-NO,23P05530023,45M,asthma_NO
+KS0024,47M,2023/02/28,Kyrgyz,male,1966,asthma,19.37919743,1.73,58,130/80,63,ICS,94,,,,,23P05530024,asthma.NO.1,asthma-NO,14,1,23P05530024,asthma-NO-1,asthma-NO,23P05530024,47M,asthma_NO
